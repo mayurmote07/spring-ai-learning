@@ -3,14 +3,16 @@ package com.mm.Spring.AI.controller;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.Map;
 
 @RestController
 public class OpenAIController {
@@ -83,13 +85,15 @@ public class OpenAIController {
         String metadata = "chat client metadata: ";
         String response = "chat client response: ";
 
-        metadata += chatClient.prompt(message)
+        metadata += chatClient
+                .prompt(message)
                 .call()
                 .chatResponse()
                 .getMetadata()
                 .getModel();
 
-        response += chatClient.prompt(message)
+        response += chatClient
+                .prompt(message)
                 .call()
                 .chatResponse()
                 .getResult()
@@ -114,10 +118,53 @@ public class OpenAIController {
      */
     @GetMapping(value = "/api/chatclient/stream/{message}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> chat(@PathVariable String message) {
-        return chatClient.prompt()
+        return chatClient
+                .prompt()
                 .user(message)
                 .stream()
                 .content();
+    }
+
+
+    /*
+     * Demonstrates Spring AI's PromptTemplate — a way to build dynamic prompts
+     * using named placeholders (e.g. {type}, {year}, {lang}) filled at runtime via a Map.
+     *
+     * Flow:
+     *   1. Define a template string with {placeholders}
+     *   2. Call promptTemplate.create(Map.of(...)) to produce a fully resolved Prompt object
+     *   3. Pass the Prompt to chatClient.prompt(prompt) — same fluent API as before
+     *
+     * This approach keeps prompt structure separate from runtime values,
+     * making prompts reusable, readable, and easy to maintain.
+     *
+     * @param type  movie genre (e.g. action, comedy, thriller)
+     * @param year  release year range (e.g. 2020)
+     * @param lang  language of the movie (e.g. English, Hindi, French)
+     */
+    @PostMapping("/api/chatclient/recommend")
+    public ResponseEntity<String> recommend(@RequestParam String type, @RequestParam String year, @RequestParam String lang) {
+
+        String template = """
+                Recommend one highly rated {type} movie released around {year}.
+                The movie should be in {lang} language.
+                Include the following details:
+                - Movie title and release year
+                - Director
+                - Main cast (top 3 actors)
+                - Runtime
+                - A brief plot summary (2-3 sentences)
+                """;
+
+        PromptTemplate promptTemplate = new PromptTemplate(template);
+        Prompt prompt = promptTemplate.create(Map.of("type", type, "year", year, "lang", lang));
+
+        String response = chatClient
+                .prompt(prompt)
+                .call()
+                .content();
+
+        return ResponseEntity.ok(response);
     }
 
 }

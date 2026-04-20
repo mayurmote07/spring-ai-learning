@@ -145,6 +145,33 @@ curl.exe -N http://localhost:8080/api/chatclient/stream/Tell+me+a+story
 
 ---
 
+### 5. Movie Recommendation via `PromptTemplate`
+
+```
+POST /api/recommend?type={type}&year={year}&lang={lang}
+```
+
+Uses Spring AI's `PromptTemplate` to build a structured prompt with named placeholders (`{type}`, `{year}`, `{lang}`).  
+The template is filled at runtime with user-supplied values before being sent to the model.
+
+**Example:**
+```
+POST http://localhost:8080/api/recommend?type=thriller&year=2019&lang=English
+```
+
+**Response:**
+```
+Movie: Parasite (2019)
+Director: Bong Joon-ho
+Top Cast: Song Kang-ho, Lee Sun-kyun, Cho Yeo-jeong
+Runtime: 132 minutes
+Summary: A poor family schemes to become employed by a wealthy family ...
+```
+
+> 💡 `PromptTemplate` separates prompt structure from input values — reusable, testable, and cleaner than string concatenation.
+
+---
+
 ## 🧠 Key Concepts Explored
 
 | Concept       | Description                                                                 |
@@ -158,6 +185,7 @@ curl.exe -N http://localhost:8080/api/chatclient/stream/Tell+me+a+story
 | `MessageWindowChatMemory` | Wraps a `ChatMemoryRepository` and limits context to a sliding window of N messages. |
 | `InMemoryChatMemoryRepository` | Default in-memory storage for conversation history — lost on app restart. |
 | `.stream().content()` | Returns a `Flux<String>` for real-time token-by-token streaming via SSE instead of waiting for the full response. |
+| `PromptTemplate` | Defines a reusable prompt with named `{placeholders}` filled at runtime via a `Map` — separates prompt structure from input data. |
 
 ---
 
