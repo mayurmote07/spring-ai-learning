@@ -24,6 +24,8 @@ src/
 └── main/
     ├── java/com/mm/Spring/AI/
     │   ├── SpringAiApplication.java         # Entry point
+    │   ├── config/
+    │   │   └── ChatConfig.java              # Spring beans (ChatMemory)
     │   └── controller/
     │       └── OpenAIController.java        # REST endpoints
     └── resources/
@@ -92,8 +94,54 @@ GET http://localhost:8080/api/chatclient/What is Spring AI?
 
 **Response:**
 ```
-with chat client: Spring AI is a framework that ...
+chat client: Spring AI is a framework that ...
 ```
+
+---
+
+### 3. Chat via `ChatClient` with Response Metadata
+
+```
+GET /api/chatclient/metadata/{message}
+```
+
+Accesses the full `ChatResponse` object to extract both the **model name** (metadata) and the **response text** — useful for understanding what model served the request.
+
+**Example:**
+```
+GET http://localhost:8080/api/chatclient/metadata/What is Spring AI?
+```
+
+**Response:**
+```
+chat client metadata: gpt-4o-mini
+chat client response: Spring AI is a framework that ...
+```
+
+> 💡 Note: this endpoint calls the model **twice** (once for metadata, once for response). A single `.chatResponse()` call can return both — a refactor opportunity as the project grows.
+
+---
+
+### 4. Streaming Response via `ChatClient`
+
+```
+GET /api/chatclient/stream/{message}
+```
+
+Streams the response **token by token** using `Flux<String>` and Server-Sent Events (SSE).  
+Returns `text/event-stream` — words appear in real time as the model generates them.
+
+**Example:**
+```
+GET http://localhost:8080/api/chatclient/stream/Tell me a story
+```
+
+Test streaming in terminal:
+```powershell
+curl.exe -N http://localhost:8080/api/chatclient/stream/Tell+me+a+story
+```
+
+> 💡 Key difference from `.call()`: `.stream().content()` returns a `Flux<String>` instead of a single `String`, enabling real-time token delivery without waiting for the full response.
 
 ---
 
@@ -103,19 +151,16 @@ with chat client: Spring AI is a framework that ...
 |---------------|-----------------------------------------------------------------------------|
 | `ChatModel`   | Low-level interface for direct model calls. More control, less convenience. |
 | `ChatClient`  | High-level fluent API. Supports prompt templates, options, and future tools like memory and advisors. |
+| `ChatResponse` | Full response object from `ChatClient` — contains result text, metadata (model name, usage tokens, etc.). |
+| `getMetadata().getModel()` | Extracts the model name (e.g. `gpt-4o-mini`) from the response metadata. |
+| `getResult().getOutput().getText()` | Extracts the assistant's text reply from the structured response object. |
+| `ChatMemory` + `MessageChatMemoryAdvisor` | Enables multi-turn conversations by automatically injecting message history into every prompt. |
+| `MessageWindowChatMemory` | Wraps a `ChatMemoryRepository` and limits context to a sliding window of N messages. |
+| `InMemoryChatMemoryRepository` | Default in-memory storage for conversation history — lost on app restart. |
+| `.stream().content()` | Returns a `Flux<String>` for real-time token-by-token streaming via SSE instead of waiting for the full response. |
 
 ---
 
-## 📌 Roadmap / Coming Soon
-
-- [ ] System prompts & prompt templates
-- [ ] Streaming responses
-- [ ] Memory / conversation history
-- [ ] Tool/function calling
-- [ ] Image generation
-- [ ] Embeddings & vector store integration
-
----
 
 ## 📝 Notes
 
