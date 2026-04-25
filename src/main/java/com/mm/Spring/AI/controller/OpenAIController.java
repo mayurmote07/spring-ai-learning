@@ -5,13 +5,17 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -20,6 +24,13 @@ public class OpenAIController {
     private final OpenAiChatModel openAiChatModel;
 
     private final ChatClient chatClient;
+
+    @Autowired
+    private EmbeddingModel embeddingModel;
+
+    //Injected from AppConfig
+    @Autowired
+    private VectorStore vectorStore;
 
     /*
      * ChatClient created using ChatModel directly, without using the builder pattern.
@@ -165,6 +176,60 @@ public class OpenAIController {
                 .content();
 
         return ResponseEntity.ok(response);
+    }
+
+    /*
+     * Converts a text input into a dense vector representation (embedding) using the EmbeddingModel.
+     *
+     * Key points:
+     *   embeddingModel.embed(input) → transforms the raw text into a float[] array
+     *   This vector embedding captures semantic meaning and can be used for similarity searches,
+     *   clustering, or as input to other ML models.
+     *
+     * @param input  the text string to be embedded (e.g., "Hello world", product description)
+     * @return       float array representing the semantic embedding of the input text
+     */
+    @PostMapping("/api/embedding")
+    public ResponseEntity<float[]> embedding(@RequestParam String input) {
+        return ResponseEntity.ok(embeddingModel.embed(input));
+    }
+
+    /*
+     * Computes the cosine similarity between the embeddings of two input strings.
+     * Cosine similarity is a common metric for measuring the semantic similarity between two vectors,
+     * with a range of [-1, 1] where 1 means identical, 0 means orthogonal (no similarity), and -1 means opposite.
+     */
+    @PostMapping("/api/similarity")
+    public ResponseEntity<Double> similarity(@RequestParam String input1, @RequestParam String input2) {
+        float[] embedding1 = embeddingModel.embed(input1);
+        float[] embedding2 = embeddingModel.embed(input2);
+
+        double dotProduct = 0.0;
+        double normA = 0.0;
+        double normB = 0.0;
+
+        for (int i = 0; i < embedding1.length; i++) {
+            dotProduct += embedding1[i] * embedding2[i];
+            normA += Math.pow(embedding1[i], 2);
+            normB += Math.pow(embedding2[i], 2);
+        }
+
+        normA = Math.sqrt(normA);
+        normB = Math.sqrt(normB);
+
+        if (normA == 0 || normB == 0) {
+            return ResponseEntity.ok(0.0); // Avoid division by zero
+        } else {
+            return ResponseEntity.ok(dotProduct / (normA * normB));
+        }
+    }
+
+    /*
+    * API to return products from the vector database/store based on the similarity of the query embedding with the product embeddings.
+    */
+    @GetMapping("/api/product")
+    public ResponseEntity<List<Document>> product(@RequestParam String query) {
+        return ResponseEntity.ok(vectorStore.similaritySearch(query));
     }
 
 }

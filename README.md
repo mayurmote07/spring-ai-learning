@@ -26,8 +26,10 @@ src/
     │   ├── SpringAiApplication.java         # Entry point
     │   ├── config/
     │   │   └── ChatConfig.java              # Spring beans (ChatMemory)
-    │   └── controller/
-    │       └── OpenAIController.java        # REST endpoints
+    │   ├── controller/
+    │   │   └── OpenAIController.java        # REST endpoints
+    │   └── Utility/
+    │       └── DataInitializer.java         # Initializes vector store with product data
     └── resources/
         └── application.properties           # App config (API key)
 ```
@@ -172,6 +174,80 @@ Summary: A poor family schemes to become employed by a wealthy family ...
 
 ---
 
+### 6. Text Embedding via `EmbeddingModel`
+
+```
+POST /api/embedding?input={text}
+```
+
+Converts input text into a dense vector representation (embedding) using the `EmbeddingModel`.  
+The embedding captures semantic meaning and can be used for similarity searches, clustering, or other ML tasks.
+
+**Example:**
+```
+POST http://localhost:8080/api/embedding?input=Hello%20world
+```
+
+**Response:**
+```
+[0.123, -0.456, 0.789, ...]  // float array representing the embedding
+```
+
+> 💡 Embeddings are numerical vectors that represent the semantic meaning of text — similar texts have similar vectors.
+
+---
+
+### 7. Cosine Similarity between Texts
+
+```
+POST /api/similarity?input1={text1}&input2={text2}
+```
+
+Computes the cosine similarity between the embeddings of two input strings.  
+Cosine similarity measures semantic similarity, ranging from -1 (opposite) to 1 (identical).
+
+**Example:**
+```
+POST http://localhost:8080/api/similarity?input1=cat&input2=dog
+```
+
+**Response:**
+```
+0.85  // High similarity between related concepts
+```
+
+> 💡 Cosine similarity is calculated as: dot product of vectors divided by the product of their magnitudes.
+
+---
+
+### 8. Product Search via Vector Store
+
+```
+GET /api/product?query={search_text}
+```
+
+Performs semantic search on product data stored in the `VectorStore`.  
+Returns documents most similar to the query based on embedding similarity.
+
+**Example:**
+```
+GET http://localhost:8080/api/product?query=wireless headphones
+```
+
+**Response:**
+```
+[
+  {
+    "content": "Product details...",
+    "metadata": {...}
+  }
+]
+```
+
+> 💡 Vector stores enable semantic search — finding content by meaning, not just keywords.
+
+---
+
 ## 🧠 Key Concepts Explored
 
 | Concept       | Description                                                                 |
@@ -186,12 +262,35 @@ Summary: A poor family schemes to become employed by a wealthy family ...
 | `InMemoryChatMemoryRepository` | Default in-memory storage for conversation history — lost on app restart. |
 | `.stream().content()` | Returns a `Flux<String>` for real-time token-by-token streaming via SSE instead of waiting for the full response. |
 | `PromptTemplate` | Defines a reusable prompt with named `{placeholders}` filled at runtime via a `Map` — separates prompt structure from input data. |
+| `EmbeddingModel` | Interface for converting text into dense vector representations (embeddings) that capture semantic meaning. |
+| `VectorStore` | Storage system for embeddings and associated documents, enabling efficient similarity searches. |
+| `TextReader` | Utility for reading text content from various sources (files, URLs) into Document objects. |
+| `TokenTextSplitter` | Splits large text documents into smaller chunks based on token counts, optimizing for embedding models. |
+| `Cosine Similarity` | Metric for measuring semantic similarity between two vectors, ranging from -1 to 1. |
+| `Semantic Search` | Search method that finds content based on meaning rather than exact keyword matches. |
+| `@PostConstruct` | Spring annotation that marks a method to be executed after dependency injection, used for initialization logic. |
 
 ---
 
+## 🗄️ Vector Stores Explored
 
-## 📝 Notes
+This project demonstrates three different vector store implementations for storing and searching embeddings:
 
-- This is a **learning/experimental** project — code will evolve as new Spring AI features are explored.
-- Spring AI 2.0.0-M4 is a milestone release; APIs may change in future versions.
+### 1. SimpleVectorStore (In-Memory)
+- **Pros**: Easy setup, no external dependencies, fast for small datasets
+- **Cons**: Data lost on restart, not suitable for production
+- **Use case**: Development, testing, small-scale applications
 
+### 2. PgVectorStore (PostgreSQL with pgvector extension)
+- **Pros**: Persistent storage, ACID compliance, scalable
+- **Cons**: Requires PostgreSQL setup with pgvector extension
+- **Use case**: Production applications needing persistence and scalability
+
+### 3. RedisVectorStore (Redis with vector support)
+- **Pros**: High performance, in-memory with optional persistence, distributed
+- **Cons**: Requires Redis server, more complex setup
+- **Use case**: High-throughput applications, caching layers, real-time search
+
+> 💡 The current implementation uses **RedisVectorStore** for its balance of performance and persistence.
+
+---
