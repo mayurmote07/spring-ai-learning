@@ -19,7 +19,9 @@ import java.util.List;
  * ensuring that the vector store is populated with relevant data before the application starts
  * accepting requests.
  */
-@Component
+
+//commenting to avoid embedding everytime
+//@Component
 public class DataInitializer {
 
     @Autowired

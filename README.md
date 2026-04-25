@@ -27,7 +27,8 @@ src/
     │   ├── config/
     │   │   └── ChatConfig.java              # Spring beans (ChatMemory)
     │   ├── controller/
-    │   │   └── OpenAIController.java        # REST endpoints
+    │   │   ├── OpenAIController.java        # Chat & embedding endpoints
+    │   │   └── AudioGenController.java      # Audio transcription & TTS endpoints
     │   └── Utility/
     │       └── DataInitializer.java         # Initializes vector store with product data
     └── resources/
@@ -248,6 +249,70 @@ GET http://localhost:8080/api/product?query=wireless headphones
 
 ---
 
+### 9. Speech-to-Text (Audio Transcription)
+
+```
+POST /api/stt (Content-Type: multipart/form-data)
+```
+
+Converts uploaded audio files to text using OpenAI's Whisper model.  
+Supports multiple audio formats (MP3, WAV, M4A, FLAC, etc.) and can transcribe in multiple languages.
+
+**Example (using curl):**
+```powershell
+curl -X POST -F "speech=@audio.mp3" http://localhost:8080/api/stt
+```
+
+**Response (SRT subtitle format):**
+```
+1
+00:00:00,000 --> 00:00:02,500
+Hello, this is a test audio file.
+
+2
+00:00:02,500 --> 00:00:05,000
+The transcription includes timestamps.
+```
+
+> 💡 Whisper is a general-purpose speech recognition model trained on 680K hours of multilingual audio. It's robust to accents, background noise, and technical language.
+
+---
+
+### 10. Text-to-Speech (Audio Synthesis)
+
+```
+POST /api/tts?text={input_text}
+```
+
+Converts input text to natural-sounding speech audio using OpenAI's Text-to-Speech (TTS) model.  
+Generates high-quality audio output in various voice options with configurable speech speed.
+
+**Example:**
+```
+POST http://localhost:8080/api/tts?text=Hello%20world,%20this%20is%20a%20test
+```
+
+**Response:**
+```
+Binary audio data (MP3 format) — can be streamed directly to a client
+```
+
+**Voice Options:**
+- `alloy` — neutral, balanced tone
+- `echo` — warm, natural tone
+- `fable` — engaging, storytelling tone
+- `onyx` — deep, professional tone
+- `nova` — bright, energetic tone
+- `shimmer` — smooth, pleasant tone
+
+**Speed Configuration:**
+- Range: 0.25 to 4.0 (1.0 = normal speed)
+- Current setting: 1.5x (faster than normal)
+
+> 💡 TTS audio can be saved as MP3 files, streamed in real-time, or integrated into applications requiring voice output (assistants, notifications, accessibility features).
+
+---
+
 ## 🧠 Key Concepts Explored
 
 | Concept       | Description                                                                 |
@@ -269,6 +334,12 @@ GET http://localhost:8080/api/product?query=wireless headphones
 | `Cosine Similarity` | Metric for measuring semantic similarity between two vectors, ranging from -1 to 1. |
 | `Semantic Search` | Search method that finds content based on meaning rather than exact keyword matches. |
 | `@PostConstruct` | Spring annotation that marks a method to be executed after dependency injection, used for initialization logic. |
+| `AudioTranscriptionModel` | Interface for converting audio files to text. Uses OpenAI's Whisper model — supports multiple languages and audio formats. |
+| `TextToSpeechModel` | Interface for converting text to natural-sounding speech audio. Offers various voices and configurable speed options. |
+| `AudioTranscriptionOptions` | Configuration object for transcription (language, response format, temperature, etc.). |
+| `TextToSpeechOptions` | Configuration object for TTS (voice selection, speech speed, etc.). |
+| `Whisper Model` | OpenAI's speech recognition model — trained on 680K hours of multilingual audio, robust to accents and background noise. |
+| `OpenAI TTS Voices` | Six available voice options: alloy, echo, fable, onyx, nova, shimmer — each with distinct characteristics. |
 
 ---
 
@@ -292,5 +363,3 @@ This project demonstrates three different vector store implementations for stori
 - **Use case**: High-throughput applications, caching layers, real-time search
 
 > 💡 The current implementation uses **RedisVectorStore** for its balance of performance and persistence.
-
----

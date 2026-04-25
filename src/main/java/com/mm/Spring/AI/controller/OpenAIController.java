@@ -2,6 +2,7 @@ package com.mm.Spring.AI.controller;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -230,6 +231,20 @@ public class OpenAIController {
     @GetMapping("/api/product")
     public ResponseEntity<List<Document>> product(@RequestParam String query) {
         return ResponseEntity.ok(vectorStore.similaritySearch(query));
+    }
+
+    /*
+    * RAG Implementation: Retrieves relevant documents from the VectorStore based on the query, and uses them as context to generate an answer.
+     * The QuestionAnswerAdvisor automatically injects the retrieved documents into the prompt context, allowing the model to generate a response that is informed by the relevant information stored in the vector database.
+     */
+    @PostMapping("/api/rag")
+    public ResponseEntity<String> getAnswerUsingRag(@RequestParam String query) {
+
+        return ResponseEntity.ok(chatClient
+                .prompt(query)
+                .advisors(QuestionAnswerAdvisor.builder(vectorStore).build())
+                .call()
+                .content());
     }
 
 }
