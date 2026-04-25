@@ -28,7 +28,10 @@ src/
     │   │   └── ChatConfig.java              # Spring beans (ChatMemory)
     │   ├── controller/
     │   │   ├── OpenAIController.java        # Chat & embedding endpoints
-    │   │   └── AudioGenController.java      # Audio transcription & TTS endpoints
+    │   │   ├── AudioGenController.java      # Audio transcription & TTS endpoints
+    │   │   └── MovieController.java         # Movie recommendations with output converters
+    │   ├── Model/
+    │   │   └── Movie.java                   # Movie bean for output converter
     │   └── Utility/
     │       └── DataInitializer.java         # Initializes vector store with product data
     └── resources/
@@ -313,6 +316,107 @@ Binary audio data (MP3 format) — can be streamed directly to a client
 
 ---
 
+### 11. List of Movies by Actor (Simple List Format)
+
+```
+GET /api/movies?actor={actor_name}
+```
+
+Retrieves top 5 movies of a given actor using the **ListOutputConverter** for simple list parsing.  
+The LLM returns comma-separated values that are automatically converted to a `List<String>`.
+
+**Example:**
+```
+GET http://localhost:8080/api/movies?actor=Shahrukh%20Khan
+```
+
+**Response:**
+```
+[
+  "Dilwale Dulhania Le Jayenge",
+  "Dil Se",
+  "Veer Zaara",
+  "Kabhi Haan Kabhi Naa",
+  "Chak De India"
+]
+```
+
+> 💡 ListOutputConverter is ideal for simple structured data — it injects format instructions like "Return as comma separated values" into the prompt.
+
+---
+
+### 12. Best Movie by Actor (Structured Bean Format)
+
+```
+GET /api/movie?actor={actor_name}
+```
+
+Retrieves the best/highest-rated movie of a given actor using **BeanOutputConverter**.  
+The LLM returns structured JSON that's automatically converted to a Movie object with full type safety.
+
+**Example:**
+```
+GET http://localhost:8080/api/movie?actor=Tom%20Hanks
+```
+
+**Response (as Movie Bean):**
+```json
+{
+  "title": "Forrest Gump",
+  "actor": "Tom Hanks",
+  "releaseYear": 1994,
+  "director": "Robert Zemeckis",
+  "genre": "Drama/Comedy",
+  "rating": 8.8,
+  "description": "The presidencies of Kennedy and Johnson..."
+}
+```
+
+> 💡 BeanOutputConverter uses JSON schema injection — the LLM receives exact field names, types, and structure expected, ensuring reliably formatted responses.
+
+---
+
+### 13. Top 5 Movies by Actor (List of Beans)
+
+```
+GET /api/moviesList?actor={actor_name}
+```
+
+Retrieves the top 5 movies of a given actor using **BeanOutputConverter with ParameterizedTypeReference**.  
+The LLM returns a JSON array that's automatically parsed into a fully typed `List<Movie>` with validation.
+
+**Example:**
+```
+GET http://localhost:8080/api/moviesList?actor=Meryl%20Streep
+```
+
+**Response (as List of Movie Beans):**
+```json
+[
+  {
+    "title": "The Iron Lady",
+    "actor": "Meryl Streep",
+    "releaseYear": 2011,
+    "director": "Phyllida Lloyd",
+    "genre": "Biography/Drama",
+    "rating": 7.2
+  },
+  {
+    "title": "Sophie's Choice",
+    "actor": "Meryl Streep",
+    "releaseYear": 1982,
+    "director": "Alan J. Pakula",
+    "genre": "Drama",
+    "rating": 8.0
+  },
+  // ... 3 more movies
+]
+```
+
+> 💡 ParameterizedTypeReference preserves generic type information at runtime — essential for converting JSON arrays to strongly-typed collections like `List<Movie>`.
+
+---
+
 ## 🧠 Key Concepts Explored
 
 | Concept       | Description                                                                 |
@@ -340,6 +444,11 @@ Binary audio data (MP3 format) — can be streamed directly to a client
 | `TextToSpeechOptions` | Configuration object for TTS (voice selection, speech speed, etc.). |
 | `Whisper Model` | OpenAI's speech recognition model — trained on 680K hours of multilingual audio, robust to accents and background noise. |
 | `OpenAI TTS Voices` | Six available voice options: alloy, echo, fable, onyx, nova, shimmer — each with distinct characteristics. |
+| `ListOutputConverter` | Converts simple comma-separated LLM responses into `List<String>`. Useful for quick list parsing without complex object mapping. |
+| `BeanOutputConverter<T>` | Converts structured JSON responses from LLM into strongly-typed Java beans. Injects JSON schema into prompts for reliable formatting. |
+| `ParameterizedTypeReference<T>` | Preserves generic type information at runtime, enabling conversion of LLM responses to complex types like `List<Movie>`. Overcomes Java's type erasure. |
+| `OutputConverter` | Base interface for all output converters — responsible for injecting format instructions into prompts and parsing LLM responses. |
+| `JSON Schema Injection` | Technique where output converters inject exact field names, types, and structure into prompts, ensuring LLM returns parseable JSON. |
 
 ---
 
